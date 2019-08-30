@@ -3,14 +3,16 @@ import smtplib
 from email.mime.text import MIMEText
 
 
-#method to send email message if error occurs
+# method to send email message if error occurs
 def sendemail(error):
     smtp_server_name = 'smtp.gmail.com'
-    port = '465' # for secure messages
-    #port = '587'  # for normal messages
+    port = '465'  # for secure messages
+    # port = '587'  # for normal messages
     sender = 'errormessages1@gmail.com'
-    receiver = 'brian_cao@mnb.uscourts.gov'
     password = 'errors123'
+
+    #Change to receiving email
+    receiver = 'brian_cao@mnb.uscourts.gov'
 
     content = error
     msg = MIMEText(content)
@@ -21,15 +23,16 @@ def sendemail(error):
         server = smtplib.SMTP_SSL('{}:{}'.format(smtp_server_name, port))
     else:
         server = smtplib.SMTP('{}:{}'.format(smtp_server_name, port))
-        server.starttls() # this is for secure reason
+        server.starttls()  # this is for secure reason
 
     server.login(sender, password)
     server.send_message(msg)
     server.quit()
 
-filename = 'C:/Users/bricao/PycharmProjects/live.txt'
+#Change to error file path
+filename = 'C:/Users/bricao/PycharmProjects/ErrorLog/live.txt'
 
-
+#function to get how many lines the error file has
 def file_len(fname):
     with open(fname) as f:
         for i, l in enumerate(f):
@@ -38,7 +41,6 @@ def file_len(fname):
 
 
 with open(filename, "r") as file:
-
     fullErrorArr = []
     errorArr = []
     errorCount = []
@@ -47,26 +49,32 @@ with open(filename, "r") as file:
     additionalErrorInfo = []
     finalError = []
 
+    #loop that parses each line for the error messages
     for line in file:
+        #see if error line is from perl SQL extension
         try:
-            found = re.search('mnbdb(.+?)["["]', line).group(1)
-            if "perl" in found:
+            ErrorFound = re.search('mnbdb(.+?)["["]', line).group(1)
+            #check if perl is in the error
+            if "perl" in ErrorFound:
                 perlFlag = 1
                 try:
-                    found = 'perl SQL extension:' + re.search('2019:(.+?)#', line).group(1)
-                    found2 = found + re.search('failed.(.+$)', line).group(1)
+                    #error type with line number
+                    ErrorFound = 'perl SQL extension:' + re.search('2019:(.+?)#', line).group(1)
+                    #extra error info on line
+                    ExtraErrorFound = ErrorFound + re.search('failed.(.+$)', line).group(1)
                 except AttributeError:
-                    found = 'Could not find String'
+                    ErrorFound = 'Could not find String'
+            #if perl not in line
             else:
-                found = re.search('mnb_live(.+?)["["]', line).group(1)
-                found2 = found + re.search(']:(.+$)', line).group(1)
-
+                ErrorFound = re.search('mnb_live(.+?)["["]', line).group(1)
+                ExtraErrorFound = ErrorFound + re.search(']:(.+$)', line).group(1)
 
         except AttributeError:
-            found = 'Could not find String'
+            ErrorFound = 'Could not find String'
+        # print(found2)
 
-        #print(found2)
         try:
+            #storing extra error info
             if perlFlag == 0:
                 found1 = re.search(']:(.+$)', line).group(1)
             else:
@@ -74,59 +82,49 @@ with open(filename, "r") as file:
         except AttributeError:
             found1 = 'Could not find String'
 
+        #storing additional error info into array
         if found1 not in additionalErrorInfo:
             additionalErrorInfo.append(found1)
+            #print(found1)
 
-        #print(found1)
-        if found not in errorArr:
-            errorArr.append(found)
+        #storing each unique error in errorArr array
+        if ErrorFound not in errorArr:
+            errorArr.append(ErrorFound)
 
-        if found2 not in finalError:
-            finalError.append(found2)
+        if ExtraErrorFound not in finalError:
+            finalError.append(ExtraErrorFound)
 
-        fullErrorArr.insert(count, found)
+        #creating array with all lines
+        fullErrorArr.insert(count, ErrorFound)
 
         count = count + 1
-
-    c = 0
-    for x in finalError:
-        print(finalError[c])
-        c += 1
-    count4 = 0
-    #for line6 in additionalErrorInfo:
-       # additionalErrorInfo.insert(count4, fullErrorArr.count(line6))
-       # count4 = count4 + 1
-
+        #resetting perlFlag
+        perlFlag = 0
 
     count1 = 0
     for line3 in errorArr:
         errorCount.insert(count1, fullErrorArr.count(line3))
         count1 = count1 + 1
 
-    #print(fullErrorArr)
-    #print(errorCount)
-    #print(errorArr)
+    eCount = 0
+    for i in errorArr:
+        print(errorArr[eCount])
+        eCount += 1
 
     count2 = 0
     fullemail = ''
     for line4 in errorArr:
+        #email string
         email = str(line4) + str(' - has ') + str(errorCount[count2]) + str(' occurrences')
-       # print(email)
+        # print(email)
+        #filtering errors to only email the errors that occur more than  5 times
         if errorCount[count2] >= 5:
             fullemail = str(fullemail) + str('\n') + str(email) + str('\n')
         count2 += 1
         fileLength = file_len(filename)
 
-    count5 = 0
-    for line5 in finalError:
-        for line6 in errorArr:
-            if errorArr[count5] in finalError[count5]:
-                
-        count5 += 1
-    #print(fullemail)
     if fullemail != "":
-        #sendemail(str(fullemail))
-        print('sent email')
+        sendemail(str(fullemail))
 
     print('Total errors: ', fileLength)
 file.close()
